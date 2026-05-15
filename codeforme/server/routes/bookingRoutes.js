@@ -19,16 +19,10 @@ router.post("/", async (req, res) => {
     let saved = null;
     if (Booking) saved = await Booking.create(req.body);
 
-    const payload = saved || req.body;
+    const savedObj = saved ? (typeof saved.toObject === 'function' ? saved.toObject() : saved) : {};
+    const payload = { ...savedObj, ...req.body };
 
-    const text = formatTelegramMessage({
-      name: payload.name || payload.customerName,
-      phone: payload.phone,
-      email: payload.email,
-      service: payload.service || payload.bookingType,
-      message: payload.notes || payload.message || "New booking",
-      source: "Service Booking",
-    });
+    const text = formatTelegramMessage({ ...payload, source: "Service Booking" });
 
     try {
       await sendTelegramMessage(text);

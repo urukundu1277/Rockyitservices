@@ -24,16 +24,10 @@ router.post("/", async (req, res) => {
 
     // Build message from saved record or incoming body
     const source = "Website Registration";
-    const payload = saved || req.body;
+    const savedObj = saved ? (typeof saved.toObject === 'function' ? saved.toObject() : saved) : {};
+    const payload = { ...savedObj, ...req.body };
 
-    const text = formatTelegramMessage({
-      name: payload.name,
-      phone: payload.phone,
-      email: payload.email,
-      service: payload.service,
-      message: payload.message || "",
-      source,
-    });
+    const text = formatTelegramMessage({ ...payload, source });
 
     try {
       await sendTelegramMessage(text);

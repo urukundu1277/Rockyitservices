@@ -44,14 +44,11 @@ router.post("/register", async (req, res) => {
 
         // Send Telegram notification, but don't block response on failure
         try {
-            const text = formatTelegramMessage({
-                name: customer.name || req.body.name,
-                phone: customer.phone || req.body.phone,
-                email: customer.email || req.body.email,
-                service: customer.service || req.body.service,
-                message: customer.message || req.body.message,
-                source: "New Customer Registration",
-            });
+            const savedObj = (customer && typeof customer.toObject === 'function') ? customer.toObject() : (customer || {});
+            // Merge saved document with original request body so we include fields
+            // that are not part of the Mongoose schema (e.g., serviceType, description).
+            const payload = { ...savedObj, ...req.body };
+            const text = formatTelegramMessage({ ...payload, source: "New Customer Registration" });
 
             await sendTelegramMessage(text);
         } catch (tgErr) {

@@ -31,6 +31,9 @@ export default function Home() {
   const [bookingForm, setBookingForm] = useState({ name: '', phone: '', whatsappLocal: '', email: '', requirement: '', serviceType: '' });
   const [loading, setLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [showError, setShowError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
@@ -41,7 +44,8 @@ export default function Home() {
       // validate local 10-digit mobile number (customer doesn't need to fill country code)
       const local = formData.whatsappLocal?.replace(/[^0-9]/g, '');
       if (!/^[6-9][0-9]{9}$/.test(local)) {
-        alert('Please enter a valid 10-digit Indian mobile number (starting with 6-9)');
+        setErrorMessage('Please enter a valid 10-digit Indian mobile number (starting with 6-9)');
+        setShowError(true);
         setLoading(false);
         return;
       }
@@ -49,11 +53,14 @@ export default function Home() {
       const payload = { ...formData, whatsappNumber: `91${local}` };
       delete payload.whatsappLocal;
       await axios.post("http://localhost:5000/api/customers/register", payload);
-      alert("Request Submitted Successfully");
+      setSuccessMessage('Request Submitted Successfully');
+      setShowSuccess(true);
       setFormData({ name: "", phone: "", whatsappLocal: "", email: "", requirement: "" });
     } catch (error) {
       console.log(error);
-      alert("Something went wrong");
+      const msg = error?.response?.data?.message || error.message || 'Something went wrong';
+      setErrorMessage(msg);
+      setShowError(true);
     } finally {
       setLoading(false);
     }
@@ -86,12 +93,24 @@ export default function Home() {
     e.preventDefault();
     try {
       const local = bookingForm.whatsappLocal?.replace(/[^0-9]/g, '');
-      if (!/^[6-9][0-9]{9}$/.test(local)) return alert('Please enter a valid 10-digit mobile number');
+      if (!/^[6-9][0-9]{9}$/.test(local)) {
+        setErrorMessage('Please enter a valid 10-digit mobile number');
+        setShowError(true);
+        return;
+      }
       // validate email
       const email = bookingForm.email?.trim();
-      if (!email) return alert('Please enter an email address');
+      if (!email) {
+        setErrorMessage('Please enter an email address');
+        setShowError(true);
+        return;
+      }
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) return alert('Please enter a valid email address');
+      if (!emailRegex.test(email)) {
+        setErrorMessage('Please enter a valid email address');
+        setShowError(true);
+        return;
+      }
       const payload = {
         name: bookingForm.name,
         phone: bookingForm.phone || bookingForm.whatsappLocal,
@@ -104,21 +123,37 @@ export default function Home() {
       await axios.post('http://localhost:5000/api/customers/register', payload);
       // show success toast/modal
       setShowBooking(false);
+      setSuccessMessage('Booking Submitted Successfully!');
       setShowSuccess(true);
       setBookingForm({ name: '', phone: '', whatsappLocal: '', email: '', requirement: '', serviceType: '' });
     } catch (err) {
       console.error('Booking error:', err);
       const msg = err?.response?.data?.message || err.message || 'Failed to submit booking';
-      alert(`Booking failed: ${msg}`);
+      setErrorMessage(`Booking failed: ${msg}`);
+      setShowError(true);
     }
   };
 
   // auto-hide success toast after 4 seconds
   useEffect(() => {
-    if (!showSuccess) return;
-    const t = setTimeout(() => setShowSuccess(false), 4000);
-    return () => clearTimeout(t);
+    if (showSuccess) {
+      const t = setTimeout(() => {
+        setShowSuccess(false);
+        setSuccessMessage('');
+      }, 4000);
+      return () => clearTimeout(t);
+    }
   }, [showSuccess]);
+
+  useEffect(() => {
+    if (showError) {
+      const t = setTimeout(() => {
+        setShowError(false);
+        setErrorMessage('');
+      }, 5000);
+      return () => clearTimeout(t);
+    }
+  }, [showError]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
@@ -211,10 +246,26 @@ export default function Home() {
               </svg>
             </div>
             <div>
-              <div className="font-semibold">Booking Submitted Successfully!</div>
+              <div className="font-semibold">{successMessage || 'Booking Submitted Successfully!'}</div>
               <div className="text-sm opacity-90">Our team will contact you shortly.</div>
             </div>
-            <button onClick={() => setShowSuccess(false)} className="ml-4 text-white/90 hover:text-white">✕</button>
+            <button onClick={() => { setShowSuccess(false); setSuccessMessage(''); }} className="ml-4 text-white/90 hover:text-white">✕</button>
+          </div>
+        </div>
+      )}
+
+      {showError && (
+        <div className="fixed right-6 bottom-20 z-50">
+          <div className="max-w-sm w-full bg-red-600 text-white rounded-lg shadow-lg p-4 flex items-start gap-3 animate-enter">
+            <div className="flex-shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1-9V6a1 1 0 112 0v3a1 1 0 11-2 0zm0 4a1 1 0 102 0 1 1 0 00-2 0z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <div className="font-semibold">{errorMessage || 'Something went wrong'}</div>
+            </div>
+            <button onClick={() => { setShowError(false); setErrorMessage(''); }} className="ml-4 text-white/90 hover:text-white">✕</button>
           </div>
         </div>
       )}

@@ -85,14 +85,9 @@ function formatTelegramMessage({
     "service_name",
   ]);
 
-  const msg = pickFirst(data, [
-    "message",
-    "issue",
-    "requirement",
-    "description",
-    "problem",
-    "notes",
-  ]);
+  // Requirement (short) and description/problem (long)
+  const requirementVal = pickFirst(data, ["requirement", "issue", "need", "shortRequirement"]);
+  const descriptionVal = pickFirst(data, ["description", "problem", "notes", "message", "details"]);
 
   const addr = pickFirst(data, ["address", "location", "city", "area"]);
   const device = pickFirst(data, ["device", "deviceType", "device_model", "deviceModel"]);
@@ -121,14 +116,11 @@ function formatTelegramMessage({
 
   // Service / Requirement block
   if (!isEmpty(svc)) lines.push(`${emoji} *Service:* ${escapeMarkdownV2(String(svc))}`);
-  if (!isEmpty(pickFirst(data, ["requirement", "issue"])) ) {
-    const reqVal = pickFirst(data, ["requirement", "issue"]);
-    if (!isEmpty(reqVal)) lines.push(`📋 *Requirement:* ${escapeMarkdownV2(String(reqVal))}`);
-  }
+  if (!isEmpty(requirementVal)) lines.push(`📋 *Requirement:* ${escapeMarkdownV2(String(requirementVal))}`);
 
-  if (!isEmpty(msg)) {
+  if (!isEmpty(descriptionVal)) {
     lines.push(`💬 *Problem Description:*`);
-    lines.push(`${escapeMarkdownV2(String(msg))}`);
+    lines.push(`${escapeMarkdownV2(String(descriptionVal))}`);
   }
 
   if (!isEmpty(device)) lines.push(`💻 *Device:* ${escapeMarkdownV2(String(device))}`);
