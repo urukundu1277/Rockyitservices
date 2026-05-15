@@ -5,6 +5,9 @@ const router = express.Router();
 const Customer =
     require("../models/Customer");
 
+// Telegram helpers (send after save)
+const { sendTelegramMessage, formatTelegramMessage } = require("../services/telegram");
+
 /* TEST ROUTE */
 
 router.get("/", async (req, res) => {
@@ -34,8 +37,26 @@ router.post("/register", async (req, res) => {
 
     try {
 
+    console.debug("[customer/register] Incoming body:", req.body);
+
         const customer =
             await Customer.create(req.body);
+
+        // Send Telegram notification, but don't block response on failure
+        try {
+            const text = formatTelegramMessage({
+                name: customer.name || req.body.name,
+                phone: customer.phone || req.body.phone,
+                email: customer.email || req.body.email,
+                service: customer.service || req.body.service,
+                message: customer.message || req.body.message,
+                source: "New Customer Registration",
+            });
+
+            await sendTelegramMessage(text);
+        } catch (tgErr) {
+            console.error("Telegram notification failed for customer register:", tgErr.message || tgErr);
+        }
 
         res.status(201).json(customer);
 

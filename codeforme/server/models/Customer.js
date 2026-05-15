@@ -17,6 +17,11 @@ const customerSchema = new mongoose.Schema({
         required: true
     },
 
+    whatsappNumber: {
+        type: String,
+        required: true
+    },
+
     requirement: {
         type: String,
         required: true

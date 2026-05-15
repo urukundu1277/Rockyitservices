@@ -4,6 +4,9 @@ import ServiceCard from "../components/ServiceCard";
 import Footer from "../components/Footer";
 
 const services = [
+  { title: "AWS Cloud Services", icon: "☁️", desc: "Cloud architecture, deployment and management on AWS." },
+  { title: "Website Design", icon: "🎨", desc: "Responsive, modern website design for businesses." },
+  { title: "Website Hosting", icon: "🌐", desc: "Fast and secure website hosting and maintenance." },
   { title: "Laptop Repair", icon: "💻", desc: "Hardware and software fixes for laptops." },
   { title: "Desktop Repair", icon: "🖥️", desc: "Desktop troubleshooting and upgrades." },
   { title: "Printer Repair", icon: "🖨️", desc: "Printer maintenance and cartridge support." },
@@ -23,7 +26,9 @@ const services = [
 
 export default function Services() {
   const handleBook = useCallback((title) => {
-    alert(`Book service: ${title} — Please login or contact us at +91 8309931417`);
+    // navigate to home and open booking modal with this service prefilled
+    const url = `/?service=${encodeURIComponent(title)}`;
+    window.location.href = url;
   }, []);
 
   return (

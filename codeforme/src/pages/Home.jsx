@@ -1,21 +1,36 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ServiceCard from "../components/ServiceCard";
 
 const previewServices = [
+  { title: "AWS Cloud Services", icon: "☁️", desc: "Cloud architecture, deployment and management on AWS." },
+  { title: "Website Design", icon: "🎨", desc: "Responsive, modern website design for businesses." },
+  { title: "Website Hosting", icon: "🌐", desc: "Fast and secure website hosting and maintenance." },
   { title: "Laptop Repair", icon: "💻", desc: "Fast laptop hardware and software fixes." },
-  { title: "Networking", icon: "🌐", desc: "LAN/WAN setup, WiFi planning." },
+  { title: "Desktop Repair", icon: "🖥️", desc: "Desktop hardware & software troubleshooting." },
+  { title: "Printer Repair", icon: "🖨️", desc: "Printer diagnostics and cartridge support." },
   { title: "CCTV Installation", icon: "📹", desc: "Secure CCTV installation and setup." },
-  { title: "Server Support", icon: "🗄️", desc: "Server maintenance and monitoring." },
+  { title: "Networking Solutions", icon: "🌐", desc: "LAN/WAN setup and cabling." },
+  { title: "WiFi Setup", icon: "📶", desc: "Wireless planning and secure setups." },
+  { title: "Software Installation", icon: "💾", desc: "App installs and configuration." },
+  { title: "Windows Installation", icon: "🪟", desc: "Windows OS install and recovery." },
   { title: "Data Recovery", icon: "🔁", desc: "Recover lost files and data." },
-  { title: "Remote Support", icon: "📞", desc: "Quick remote IT assistance." },
+  { title: "Computer AMC Services", icon: "🛠️", desc: "Annual maintenance contracts for systems." },
+  { title: "Chip Level Repair", icon: "🔧", desc: "Advanced motherboard and chip-level fixes." },
+  { title: "Server Maintenance", icon: "🗄️", desc: "Server upkeep, monitoring and support." },
+  { title: "Custom PC Build", icon: "🧩", desc: "Custom workstation and gaming PC builds." },
+  { title: "Antivirus Installation", icon: "🛡️", desc: "Antivirus setup and security hardening." },
+  { title: "Remote IT Support", icon: "📞", desc: "Quick remote IT assistance." },
 ];
 
 export default function Home() {
-  const [formData, setFormData] = useState({ name: "", phone: "", email: "", requirement: "" });
+  const [formData, setFormData] = useState({ name: "", phone: "", whatsappLocal: "", email: "", requirement: "" });
+  const [showBooking, setShowBooking] = useState(false);
+  const [bookingForm, setBookingForm] = useState({ name: '', phone: '', whatsappLocal: '', email: '', requirement: '', serviceType: '' });
   const [loading, setLoading] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
@@ -23,9 +38,19 @@ export default function Home() {
     e.preventDefault();
     try {
       setLoading(true);
-      await axios.post("http://localhost:5000/api/customers/register", formData);
+      // validate local 10-digit mobile number (customer doesn't need to fill country code)
+      const local = formData.whatsappLocal?.replace(/[^0-9]/g, '');
+      if (!/^[6-9][0-9]{9}$/.test(local)) {
+        alert('Please enter a valid 10-digit Indian mobile number (starting with 6-9)');
+        setLoading(false);
+        return;
+      }
+
+      const payload = { ...formData, whatsappNumber: `91${local}` };
+      delete payload.whatsappLocal;
+      await axios.post("http://localhost:5000/api/customers/register", payload);
       alert("Request Submitted Successfully");
-      setFormData({ name: "", phone: "", email: "", requirement: "" });
+      setFormData({ name: "", phone: "", whatsappLocal: "", email: "", requirement: "" });
     } catch (error) {
       console.log(error);
       alert("Something went wrong");
@@ -33,6 +58,67 @@ export default function Home() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const svc = params.get('service');
+      if (svc) {
+        openBooking({ title: svc });
+        // remove param from URL
+        params.delete('service');
+        const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
+        window.history.replaceState({}, '', newUrl);
+      }
+    } catch (err) {
+      // ignore
+    }
+  }, []);
+
+  const openBooking = (service) => {
+    setBookingForm({ name: '', phone: '', whatsappLocal: '', email: '', requirement: '', serviceType: service.title });
+    setShowBooking(true);
+  };
+
+  const handleBookingChange = (e) => setBookingForm({ ...bookingForm, [e.target.name]: e.target.value });
+
+  const submitBooking = async (e) => {
+    e.preventDefault();
+    try {
+      const local = bookingForm.whatsappLocal?.replace(/[^0-9]/g, '');
+      if (!/^[6-9][0-9]{9}$/.test(local)) return alert('Please enter a valid 10-digit mobile number');
+      // validate email
+      const email = bookingForm.email?.trim();
+      if (!email) return alert('Please enter an email address');
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) return alert('Please enter a valid email address');
+      const payload = {
+        name: bookingForm.name,
+        phone: bookingForm.phone || bookingForm.whatsappLocal,
+        whatsappNumber: `91${local}`,
+        requirement: bookingForm.requirement || (`Request for ${bookingForm.serviceType}`),
+        email: email,
+      };
+      // include serviceType if backend supports it
+      payload.serviceType = bookingForm.serviceType;
+      await axios.post('http://localhost:5000/api/customers/register', payload);
+      // show success toast/modal
+      setShowBooking(false);
+      setShowSuccess(true);
+      setBookingForm({ name: '', phone: '', whatsappLocal: '', email: '', requirement: '', serviceType: '' });
+    } catch (err) {
+      console.error('Booking error:', err);
+      const msg = err?.response?.data?.message || err.message || 'Failed to submit booking';
+      alert(`Booking failed: ${msg}`);
+    }
+  };
+
+  // auto-hide success toast after 4 seconds
+  useEffect(() => {
+    if (!showSuccess) return;
+    const t = setTimeout(() => setShowSuccess(false), 4000);
+    return () => clearTimeout(t);
+  }, [showSuccess]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
@@ -61,10 +147,77 @@ export default function Home() {
 
         <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {previewServices.map((s) => (
-            <ServiceCard key={s.title} icon={s.icon} title={s.title} description={s.desc} onBook={() => alert(`Please login or contact +91 8309931417 to book ${s.title}`)} />
+            <ServiceCard key={s.title} icon={s.icon} title={s.title} description={s.desc} onBook={() => openBooking(s)} />
           ))}
         </div>
       </section>
+
+      {/* Why Choose section moved below contact form for better flow */}
+
+      <section id="contact" className="max-w-3xl mx-auto px-6 py-12">
+        <div className="">
+          <div className="bg-white rounded-3xl shadow-2xl p-8">
+            <h3 className="text-2xl font-bold">New Customer Registration</h3>
+            <p className="mt-2 text-gray-600">Submit your requirement and our IT team will contact you.</p>
+
+            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+              <input name="name" value={formData.name} onChange={handleChange} placeholder="Full Name" required className="border border-gray-200 p-3 rounded-lg w-full" />
+              <input name="phone" value={formData.phone} onChange={handleChange} placeholder="Phone Number" required className="border border-gray-200 p-3 rounded-lg w-full" />
+              <div className="flex">
+                <div className="inline-flex items-center px-3 rounded-l-lg bg-gray-100 border border-r-0 border-gray-200">+91</div>
+                <input name="whatsappLocal" value={formData.whatsappLocal} onChange={handleChange} placeholder="WhatsApp Number (10 digits)" required className="border border-gray-200 p-3 rounded-r-lg w-full" />
+              </div>
+              <input name="email" value={formData.email} onChange={handleChange} placeholder="Email Address" required className="border border-gray-200 p-3 rounded-lg w-full" />
+              <textarea name="requirement" value={formData.requirement} onChange={handleChange} placeholder="Requirement / Issue" required className="border border-gray-200 p-3 rounded-lg w-full h-28" />
+
+              <button type="submit" disabled={loading} className="w-full bg-green-600 text-white py-3 rounded-lg">{loading ? 'Submitting...' : 'Submit Request'}</button>
+            </form>
+          </div>
+
+        </div>
+      </section>
+
+      {showBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowBooking(false)} />
+          <div className="relative w-full max-w-md bg-white rounded-xl p-6 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Book Service: {bookingForm.serviceType}</h3>
+              <button onClick={() => setShowBooking(false)} className="text-gray-500">Close</button>
+            </div>
+            <form onSubmit={submitBooking} className="mt-4 space-y-3">
+              <input name="name" value={bookingForm.name} onChange={handleBookingChange} placeholder="Full Name" required className="border border-gray-200 p-3 rounded-lg w-full" />
+              <div className="flex">
+                <div className="inline-flex items-center px-3 rounded-l-lg bg-gray-100 border border-r-0 border-gray-200">+91</div>
+                <input name="whatsappLocal" value={bookingForm.whatsappLocal} onChange={handleBookingChange} placeholder="WhatsApp Number (10 digits)" required className="border border-gray-200 p-3 rounded-r-lg w-full" />
+              </div>
+              <input name="email" value={bookingForm.email} onChange={handleBookingChange} placeholder="Email Address" required className="border border-gray-200 p-3 rounded-lg w-full" />
+              <textarea name="requirement" value={bookingForm.requirement} onChange={handleBookingChange} placeholder="Problem Description" className="border border-gray-200 p-3 rounded-lg w-full h-24" />
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setShowBooking(false)} className="px-4 py-2 rounded-lg border">Cancel</button>
+                <button type="submit" className="px-4 py-2 bg-emerald-600 text-white rounded-lg">Submit Booking</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showSuccess && (
+        <div className="fixed right-6 bottom-6 z-50">
+          <div className="max-w-sm w-full bg-emerald-600 text-white rounded-lg shadow-lg p-4 flex items-start gap-3 animate-enter">
+            <div className="flex-shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.707a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 10-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <div className="font-semibold">Booking Submitted Successfully!</div>
+              <div className="text-sm opacity-90">Our team will contact you shortly.</div>
+            </div>
+            <button onClick={() => setShowSuccess(false)} className="ml-4 text-white/90 hover:text-white">✕</button>
+          </div>
+        </div>
+      )}
 
       <section className="max-w-7xl mx-auto px-6 py-12 bg-white rounded-3xl shadow-lg">
         <h3 className="text-2xl font-bold">Why Choose Rocky IT Services?</h3>
@@ -80,31 +233,6 @@ export default function Home() {
           <div className="space-y-2">
             <h4 className="font-semibold">Trusted Support</h4>
             <p>Secure processes and reliable remote assistance.</p>
-          </div>
-        </div>
-      </section>
-
-      <section id="contact" className="max-w-7xl mx-auto px-6 py-12">
-        <div className="grid md:grid-cols-2 gap-8 items-start">
-          <div className="bg-white rounded-3xl shadow-2xl p-8">
-            <h3 className="text-2xl font-bold">New Customer Registration</h3>
-            <p className="mt-2 text-gray-600">Submit your requirement and our IT team will contact you.</p>
-
-            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-              <input name="name" value={formData.name} onChange={handleChange} placeholder="Full Name" required className="border border-gray-200 p-3 rounded-lg w-full" />
-              <input name="phone" value={formData.phone} onChange={handleChange} placeholder="Phone Number" required className="border border-gray-200 p-3 rounded-lg w-full" />
-              <input name="email" value={formData.email} onChange={handleChange} placeholder="Email Address" required className="border border-gray-200 p-3 rounded-lg w-full" />
-              <textarea name="requirement" value={formData.requirement} onChange={handleChange} placeholder="Requirement / Issue" required className="border border-gray-200 p-3 rounded-lg w-full h-28" />
-
-              <button type="submit" disabled={loading} className="w-full bg-green-600 text-white py-3 rounded-lg">{loading ? 'Submitting...' : 'Submit Request'}</button>
-            </form>
-          </div>
-
-          <div className="space-y-6">
-            <div className="bg-white rounded-2xl p-6 shadow">
-              <h4 className="font-semibold">Quick Contact</h4>
-              <p className="mt-2 text-gray-600">Need urgent support? Call us at <strong>+91 8309931417</strong> or submit the form.</p>
-            </div>
           </div>
         </div>
       </section>

@@ -7,6 +7,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
 const router = express.Router();
+const { sendAdminAlert } = require("../services/telegram");
 
 /* REGISTER */
 
@@ -121,6 +122,13 @@ router.post("/login", async (req, res) => {
             }
 
         });
+
+        // Send admin alert for login (do not block response)
+        try {
+            sendAdminAlert("admin_login", { user: user.email, ip: req.ip }).catch(err => console.error("Admin alert failed:", err.message || err));
+        } catch (err) {
+            console.error("Failed to trigger admin alert:", err.message || err);
+        }
 
     } catch (error) {
 

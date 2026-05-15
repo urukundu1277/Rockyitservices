@@ -6,6 +6,7 @@ import Register from "./pages/Register";
 import Services from "./pages/Services";
 import Admin from "./pages/Admin";
 import Dashboard from "./pages/Dashboard";
+import AdminLogin from "./pages/AdminLogin";
 
 export default function App() {
 
@@ -23,6 +24,7 @@ export default function App() {
 
         <Route path="/services" element={<Services />} />
 
+        <Route path="/admin-login" element={<AdminLogin />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/dashboard" element={<Dashboard />} />
 
